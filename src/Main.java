@@ -1,7 +1,13 @@
-import net.java.games.input.*;
+import net.java.games.input.Controller;
+import net.java.games.input.ControllerEnvironment;
 
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
 import java.util.Map;
@@ -10,7 +16,10 @@ import java.util.stream.Collectors;
 
 public class Main {
 
-    public static void main(String[] args) {
+    public static final int WIDTH = 1440, HEIGHT = 1440 / 16 * 9;
+    public static final int STEP_FPS_CAP = 80;
+
+    public static void main (String[] args) throws InterruptedException {
         Set<Controller> joySticks = Arrays.stream(
                 ControllerEnvironment
                         .getDefaultEnvironment()
@@ -23,10 +32,9 @@ public class Main {
         Controller joy = joySticks.iterator().next();
         JFrame frame = new JFrame();
         JPanel art = new JPanel();
-        art.setPreferredSize(new Dimension(900, 900 / 16 * 9));
+        art.setPreferredSize(new Dimension(WIDTH, HEIGHT));
         SwingUtilities.invokeLater(() -> {
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-//            frame.setLocationRelativeTo(null);
             frame.add(art);
             frame.pack();
             frame.setVisible(true);
@@ -34,7 +42,7 @@ public class Main {
 
         State state = new TitleState();
         art.setDoubleBuffered(true);
-        BufferedImage db = new BufferedImage(800, 800 / 16 * 9, BufferedImage.TYPE_INT_RGB);
+        BufferedImage db = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_RGB);
         Graphics2D dg = (Graphics2D) db.getGraphics();
         dg.setFont(new Font("Arial", 0, 26));
         dg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -54,15 +62,20 @@ public class Main {
 
         int iterations = 0;
         long time = System.currentTimeMillis();
+        int lag = 0;
 
         while (true) {
             Map<net.java.games.input.Component, Float> x = ControllerState.mapFrom(joy);
+            if (lag > 0) {
+                Thread.sleep(lag);
+            }
             state.step(x);
             iterations++;
-            if (iterations % 100 == 0) {
+            if (iterations % 400 == 0) {
                 iterations = 0;
-                double fps = 100 / ((-time + (time = System.currentTimeMillis())) / 1000.);
-//                System.out.println(fps);
+                double fps = 400 / ((-time + (time = System.currentTimeMillis())) / 1000.);
+                lag = Math.max(lag + (int) (1000. / STEP_FPS_CAP - 1000. / fps), 0);
+                System.out.println(lag);
             }
         }
     }
